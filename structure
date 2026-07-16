@@ -1,0 +1,94 @@
+Smart_Attendance_Project/
+|
+|-- main.py
+|   Main desktop dashboard entry point.
+|
+|-- attendance.py
+|   Live attendance workflow using face recognition and fingerprint verification.
+|
+|-- register.py
+|   Core student registration logic for face capture, fingerprint enrollment, and CSV save.
+|
+|-- register_professional.py
+|   Professional registration window used by the dashboard UI.
+|
+|-- live_detection.py
+|   Lightweight live preview for testing face detection and recognition output.
+|
+|-- train_model.py
+|   Trains the face embedding model from saved dataset images.
+|
+|-- config.py
+|   Shared project configuration and ESP32 discovery cache.
+|
+|-- faculty_notify.py
+|   Sends the attendance report link to faculty by email.
+|
+|-- calculate_percentage.py
+|   Utility script to print attendance percentage from Google Sheets data.
+|
+|-- camera_test.py
+|   Simple Tkinter camera preview test helper.
+|
+|-- credentials.json
+|   Google service account credentials file.
+|
+|-- student_info.csv
+|   Registered student master record.
+|
+|-- ESP32_CODE
+|   ESP32 firmware/source file used on the hardware device.
+|
+|-- structure
+|   Project structure reference file.
+|
+|-- dataset/
+|   Saved face images grouped by student.
+|   `-- <student_name>_<student_id>/
+|       `-- *.jpg
+|
+|-- trainer/
+|   Trained model files and legacy trainer output.
+|   |-- face_embeddings.pkl
+|   `-- trainer.yml
+|
+|-- services/
+|   Core backend service layer.
+|   |-- absence_service.py
+|   |   Finds absent students and sends parent SMS alerts.
+|   |-- camera_service.py
+|   |   Camera read loop, face tracking, and recognition state handling.
+|   |-- esp32_discovery.py
+|   |   Finds the ESP32 device on the local network.
+|   |-- esp32_service.py
+|   |   ESP32 integration for attendance signals, fingerprint actions, and SMS calls.
+|   |-- esp32_sms_service.py
+|   |   Dedicated helper for parent SMS notifications through ESP32.
+|   |-- face_recognition_model.py
+|   |   Face detection, encoding, training, and matching logic.
+|   |-- face_utils.py
+|   |   Shared face crop, resize, normalization, and quality-check helpers.
+|   |-- google_service.py
+|   |   Google Sheets connection, append, and fetch helpers.
+|   `-- thread_service.py
+|       Background thread helper to avoid blocking the UI or attendance loop.
+|
+`-- ui/
+    UI layer for the desktop application.
+    |-- charts_professional.py
+    |   Attendance analytics and charts page.
+    |-- dashboard.py
+    |   Dashboard overview with metrics and quick actions.
+    |-- logs.py
+    |   Attendance log viewer and search page.
+    |-- sidebar.py
+    |   Left navigation sidebar.
+    |-- students.py
+    |   Student directory, profile, edit, and delete flows.
+    `-- theme.py
+        Shared application theme, components, and layout helpers.
+
+Notes:
+- `__pycache__` folders are generated automatically and are omitted for readability.
+- Dataset image filenames are omitted for readability.
+- The files removed during cleanup are not part of the active project structure anymore.

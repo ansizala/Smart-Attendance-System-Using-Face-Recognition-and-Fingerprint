@@ -1,0 +1,487 @@
+//this code is uploaded in ESP32 here write the code for refrence
+
+#include <WiFi.h>
+#include <WebServer.h>
+
+#define TINY_GSM_MODEM_SIM800
+#include <TinyGsmClient.h>
+
+#include <Adafruit_Fingerprint.h>
+
+// --------------------
+// PIN DEFINITIONS
+// --------------------
+#define RED_LED 5
+#define GREEN_LED 2
+#define BLUE_LED 4
+
+#define BUZZER 33
+#define BUTTON 32
+
+#define GSM_TX 17
+#define GSM_RX 16
+
+#define FP_TX 27
+#define FP_RX 26
+
+// --------------------
+// WIFI
+// --------------------
+const char* ssid = "MansiZala";
+const char* password = "14032006";
+
+// --------------------
+// GLOBALS
+// --------------------
+WebServer server(80);
+
+HardwareSerial sim800(2);
+TinyGsm modem(sim800);
+
+HardwareSerial fpSerial(1);
+Adafruit_Fingerprint finger = Adafruit_Fingerprint(&fpSerial);
+
+const uint8_t FP_TIMEOUT_CODE = 254;
+const uint8_t FP_REMOVE_TIMEOUT_CODE = 253;
+const int FP_VERIFY_MATCH = 1;
+const int FP_VERIFY_NO_FINGER = -1;
+const int FP_VERIFY_NOT_FOUND = -2;
+const int FP_VERIFY_SENSOR_ERROR = -3;
+
+// --------------------
+// HELPERS
+// --------------------
+void beep(int frequency, int durationMs) {
+  tone(BUZZER, frequency);
+  delay(durationMs);
+  noTone(BUZZER);
+}
+
+void triggerSecurityAlert(int durationMs = 1200) {
+  digitalWrite(RED_LED, HIGH);
+  digitalWrite(GREEN_LED, LOW);
+  beep(1000, durationMs);
+  digitalWrite(RED_LED, LOW);
+}
+
+String formatPhone(String phone) {
+  phone.replace(" ", "");
+  phone.replace("-", "");
+
+  if (phone.length() == 10) {
+    phone = "+91" + phone;
+  }
+  return phone;
+}
+
+String fpCodeToText(uint8_t code) {
+  switch (code) {
+    case FINGERPRINT_OK: return "OK";
+    case FINGERPRINT_PACKETRECIEVEERR: return "PACKET_ERROR";
+    case FINGERPRINT_NOFINGER: return "NO_FINGER";
+    case FINGERPRINT_IMAGEFAIL: return "IMAGE_FAIL";
+    case FINGERPRINT_IMAGEMESS: return "IMAGE_MESSY";
+    case FINGERPRINT_FEATUREFAIL: return "FEATURE_FAIL";
+    case FINGERPRINT_INVALIDIMAGE: return "INVALID_IMAGE";
+    case FINGERPRINT_ENROLLMISMATCH: return "ENROLL_MISMATCH";
+    case FINGERPRINT_BADLOCATION: return "BAD_LOCATION";
+    case FINGERPRINT_FLASHERR: return "FLASH_ERROR";
+    case FP_TIMEOUT_CODE: return "TIMEOUT_WAITING_FOR_FINGER";
+    case FP_REMOVE_TIMEOUT_CODE: return "TIMEOUT_WAITING_FOR_REMOVAL";
+    default: return "UNKNOWN_CODE_" + String(code);
+  }
+}
+
+uint8_t waitForFinger(unsigned long timeoutMs) {
+  unsigned long start = millis();
+
+  while (millis() - start < timeoutMs) {
+    uint8_t p = finger.getImage();
+
+    if (p == FINGERPRINT_OK) {
+      return p;
+    }
+
+    if (p != FINGERPRINT_NOFINGER) {
+      Serial.println("getImage: " + fpCodeToText(p));
+    }
+
+    delay(50);
+  }
+
+  return FP_TIMEOUT_CODE;
+}
+
+uint8_t waitForFingerRemoval(unsigned long timeoutMs) {
+  unsigned long start = millis();
+
+  while (millis() - start < timeoutMs) {
+    uint8_t p = finger.getImage();
+
+    if (p == FINGERPRINT_NOFINGER) {
+      return FINGERPRINT_OK;
+    }
+
+    delay(50);
+  }
+
+  return FP_REMOVE_TIMEOUT_CODE;
+}
+
+// --------------------
+// SEND SMS
+// --------------------
+void sendSMS(String phone, String name, String date, String timeValue, String status) {
+  phone = formatPhone(phone);
+
+  String msg = "Dear Parent,\n";
+
+  if (status == "absent") {
+    msg += name + " is absent.\n";
+    msg += "Date: " + date;
+  } else {
+    msg += name + " attended class.\n";
+    msg += "Date: " + date + "\n";
+    msg += "Time: " + timeValue;
+  }
+
+  Serial.println("Sending SMS to: " + phone);
+
+  if (!modem.waitForNetwork(3000)) {
+    Serial.println("GSM network not connected");
+    return;
+  }
+
+  bool result = modem.sendSMS(phone, msg);
+
+  if (result) Serial.println("SMS sent");
+  else Serial.println("SMS failed");
+}
+
+// --------------------
+// FINGERPRINT VERIFY
+// --------------------
+int verifyFingerprintScan(int &matchedID) {
+  unsigned long start = millis();
+  matchedID = -1;
+
+  while (millis() - start < 4000) {
+    uint8_t p = finger.getImage();
+
+    if (p == FINGERPRINT_NOFINGER) {
+      delay(50);
+      continue;
+    }
+
+    if (p != FINGERPRINT_OK) {
+      Serial.println("getImage failed: " + fpCodeToText(p));
+      delay(50);
+      continue;
+    }
+
+    p = finger.image2Tz();
+    if (p != FINGERPRINT_OK) {
+      Serial.println("image2Tz failed: " + fpCodeToText(p));
+      return FP_VERIFY_SENSOR_ERROR;
+    }
+
+    p = finger.fingerSearch();
+    if (p == FINGERPRINT_OK) {
+      matchedID = finger.fingerID;
+      return FP_VERIFY_MATCH;
+    }
+
+    if (p == FINGERPRINT_NOTFOUND) {
+      Serial.println("fingerSearch: NOT_FOUND");
+      return FP_VERIFY_NOT_FOUND;
+    }
+
+    Serial.println("fingerSearch failed: " + fpCodeToText(p));
+    return FP_VERIFY_SENSOR_ERROR;
+  }
+
+  Serial.println("Fingerprint verify timeout");
+  return FP_VERIFY_NO_FINGER;
+}
+
+// --------------------
+// FINGERPRINT ENROLL
+// --------------------
+uint8_t enrollFingerprint(int id) {
+  uint8_t p;
+
+  Serial.println("Place finger...");
+
+  p = waitForFinger(10000);
+  if (p != FINGERPRINT_OK) {
+    Serial.println("First capture failed: " + fpCodeToText(p));
+    return p;
+  }
+
+  p = finger.image2Tz(1);
+  if (p != FINGERPRINT_OK) {
+    Serial.println("image2Tz(1) failed: " + fpCodeToText(p));
+    return p;
+  }
+
+  Serial.println("Remove finger...");
+  p = waitForFingerRemoval(10000);
+  if (p != FINGERPRINT_OK) {
+    Serial.println("Finger removal failed: " + fpCodeToText(p));
+    return p;
+  }
+
+  delay(500);
+  Serial.println("Place same finger again...");
+
+  p = waitForFinger(10000);
+  if (p != FINGERPRINT_OK) {
+    Serial.println("Second capture failed: " + fpCodeToText(p));
+    return p;
+  }
+
+  p = finger.image2Tz(2);
+  if (p != FINGERPRINT_OK) {
+    Serial.println("image2Tz(2) failed: " + fpCodeToText(p));
+    return p;
+  }
+
+  p = finger.createModel();
+  if (p != FINGERPRINT_OK) {
+    Serial.println("createModel failed: " + fpCodeToText(p));
+    return p;
+  }
+
+  p = finger.storeModel(id);
+  Serial.println("storeModel result: " + fpCodeToText(p));
+  return p;
+}
+
+// --------------------
+// API: ATTENDANCE
+// --------------------
+void handleAttendance() {
+  String name = server.arg("name");
+
+  digitalWrite(GREEN_LED, HIGH);
+  digitalWrite(RED_LED, LOW);
+
+  Serial.println("Attendance marked: " + name);
+
+  beep(2000, 150);
+
+  server.send(200, "text/plain", "OK");
+
+  delay(500);
+  digitalWrite(GREEN_LED, LOW);
+}
+
+// --------------------
+// API: UNKNOWN
+// --------------------
+void handleUnknown() {
+  Serial.println("Unknown detected");
+  server.send(200, "text/plain", "ALERT");
+  triggerSecurityAlert(2000);
+}
+
+void handleHealth() {
+  server.send(200, "text/plain", "OK");
+}
+
+// --------------------
+// API: SMS
+// --------------------
+void handleNotify() {
+  String phone = server.arg("phone");
+  String name = server.arg("name");
+  String date = server.arg("date");
+  String timeValue = server.arg("time");
+
+  String status = "present";
+  if (server.hasArg("status")) {
+    status = server.arg("status");
+  }
+
+  server.send(200, "text/plain", "SMS_PROCESSING");
+  sendSMS(phone, name, date, timeValue, status);
+}
+
+// --------------------
+// API: VERIFY
+// --------------------
+void handleVerify() {
+  if (!server.hasArg("id")) {
+    server.send(400, "text/plain", "Missing ID");
+    return;
+  }
+
+  int expectedID = server.arg("id").toInt();
+
+  Serial.println("Verify request for ID: " + String(expectedID));
+
+  int scannedID = -1;
+  int verifyStatus = verifyFingerprintScan(scannedID);
+
+  Serial.println("Verify status: " + String(verifyStatus));
+  if (verifyStatus == FP_VERIFY_MATCH) {
+    Serial.println("Scanned ID: " + String(scannedID));
+    Serial.println("Confidence: " + String(finger.confidence));
+  }
+
+  if (verifyStatus == FP_VERIFY_MATCH && scannedID == expectedID) {
+    Serial.println("MATCH");
+    server.send(200, "text/plain", "MATCH");
+  } else if (verifyStatus == FP_VERIFY_MATCH) {
+    Serial.println("NO MATCH");
+    triggerSecurityAlert();
+    server.send(200, "text/plain", "NO_MATCH:" + String(scannedID));
+  } else if (verifyStatus == FP_VERIFY_NO_FINGER) {
+    Serial.println("NO FINGER");
+    server.send(200, "text/plain", "NO_FINGER");
+  } else if (verifyStatus == FP_VERIFY_NOT_FOUND) {
+    Serial.println("NOT FOUND");
+    triggerSecurityAlert();
+    server.send(200, "text/plain", "NOT_FOUND");
+  } else {
+    Serial.println("SENSOR ERROR");
+    server.send(200, "text/plain", "SENSOR_ERROR");
+  }
+}
+
+void handleClearFingerprints() {
+  uint8_t result = finger.emptyDatabase();
+
+  Serial.println("Clear fingerprint DB result: " + fpCodeToText(result));
+
+  if (result == FINGERPRINT_OK) {
+    finger.getTemplateCount();
+    Serial.println("Stored templates: " + String(finger.templateCount));
+    server.send(200, "text/plain", "CLEAR_SUCCESS");
+  } else {
+    server.send(200, "text/plain", "CLEAR_FAILED:" + fpCodeToText(result));
+  }
+}
+
+// --------------------
+// API: ENROLL
+// --------------------
+void handleEnroll() {
+  if (!server.hasArg("id")) {
+    server.send(400, "text/plain", "Missing ID");
+    return;
+  }
+
+  int id = server.arg("id").toInt();
+
+  if (id <= 0) {
+    server.send(400, "text/plain", "Invalid ID");
+    return;
+  }
+
+  Serial.println("Enroll ID: " + String(id));
+
+  uint8_t result = enrollFingerprint(id);
+
+  Serial.println("Enroll result code: " + fpCodeToText(result));
+
+  if (result == FINGERPRINT_OK) {
+    server.send(200, "text/plain", "ENROLL_SUCCESS");
+  } else {
+    server.send(200, "text/plain", "FAILED:" + fpCodeToText(result));
+  }
+}
+
+// --------------------
+// GSM INIT
+// --------------------
+void initGSM() {
+  Serial.println("Initializing GSM...");
+
+  sim800.begin(9600, SERIAL_8N1, GSM_RX, GSM_TX);
+  delay(3000);
+
+  modem.restart();
+
+  Serial.print("Connecting GSM");
+  while (!modem.waitForNetwork(3000)) {
+    Serial.print(".");
+  }
+
+  Serial.println("\nGSM connected");
+}
+
+// --------------------
+// WIFI INIT
+// --------------------
+void initWiFi() {
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+
+  Serial.print("Connecting WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\nWiFi connected");
+  Serial.println(WiFi.localIP());
+
+  digitalWrite(BLUE_LED, HIGH);
+}
+
+// --------------------
+// SETUP
+// --------------------
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(RED_LED, OUTPUT);
+  pinMode(GREEN_LED, OUTPUT);
+  pinMode(BLUE_LED, OUTPUT);
+  pinMode(BUZZER, OUTPUT);
+  pinMode(BUTTON, INPUT_PULLUP);
+
+  digitalWrite(RED_LED, LOW);
+  digitalWrite(GREEN_LED, LOW);
+  digitalWrite(BLUE_LED, LOW);
+
+  fpSerial.begin(57600, SERIAL_8N1, FP_RX, FP_TX);
+  finger.begin(57600);
+
+  if (finger.verifyPassword()) {
+    Serial.println("Fingerprint sensor connected");
+
+    finger.getTemplateCount();
+    Serial.println("Stored templates: " + String(finger.templateCount));
+  } else {
+    Serial.println("Fingerprint sensor not detected");
+  }
+
+  initGSM();
+  initWiFi();
+
+  server.on("/attendance", handleAttendance);
+  server.on("/health", handleHealth);
+  server.on("/unknown", handleUnknown);
+  server.on("/notify", handleNotify);
+  server.on("/enroll", handleEnroll);
+  server.on("/verify", handleVerify);
+  server.on("/clear-fingerprints", handleClearFingerprints);
+
+  server.begin();
+  Serial.println("Server started");
+}
+
+// --------------------
+// LOOP
+// --------------------
+void loop() {
+  server.handleClient();
+
+  if (digitalRead(BUTTON) == LOW) {
+    Serial.println("Button pressed");
+    beep(2000, 150);
+    delay(800);
+  }
+}
