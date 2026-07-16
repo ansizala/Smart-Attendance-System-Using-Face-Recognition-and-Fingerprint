@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+
+dataset/
+
+credentials.json
+
+trainer/*.pkl
+trainer/*.yml
+
+.env
+
+.vscode/
+
+.idea/
+
+Thumbs.db
