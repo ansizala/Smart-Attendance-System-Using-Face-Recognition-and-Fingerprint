@@ -1,210 +1,330 @@
-# Smart-Attendance-System-Using-Face-Recognition-and-Fingerprint
-AI-powered Smart Attendance System using Face Recognition, Fingerprint Authentication, ESP32, and Google Sheets.
+# Smart Attendance System using Face Recognition and Fingerprint Authentication
 
-✔ Face Recognition
+An AI-powered Smart Attendance System that combines **Face Recognition**, **Fingerprint Authentication**, **ESP32**, **IoT**, and **Cloud Integration** to provide a secure, automated, and real-time attendance management solution.
 
-✔ Fingerprint Authentication
+This project was developed to eliminate manual attendance, prevent proxy attendance, and provide real-time attendance monitoring with cloud storage and automated notifications.
 
-✔ ESP32
+---
 
-✔ Google Sheets
+# Features
 
-✔ Parent SMS Alerts
+- Face Recognition using Python and OpenCV
+- Fingerprint Authentication using ESP32
+- Dual Biometric Authentication
+- Student Registration System
+- Automated Attendance Marking
+- Google Sheets Cloud Integration
+- Parent SMS Notification using SIM800L GSM Module
+- Faculty Email Notification
+- Attendance Dashboard
+- Student Management System
+- Attendance Analytics
+- Real-time Attendance Logs
+- LED Status Indicators
+- Professional Desktop GUI
 
-✔ Faculty Email Reports
+---
 
-✔ Professional Desktop Dashboard
+# Project Overview
 
+The Smart Attendance System verifies the identity of a student using two levels of authentication:
 
+1. Face Recognition
+2. Fingerprint Verification
 
-Features
+Attendance is recorded only when both authentications are successful.
 
-✔ Student Registration
+The attendance data is automatically uploaded to Google Sheets, while SMS notifications are sent to parents and attendance reports are emailed to faculty members.
 
-✔ Face Dataset Collection
+---
 
-✔ Face Recognition
+# Hardware Components
 
-✔ Fingerprint Verification
+| Component | Quantity |
+|------------|----------|
+| ESP32 Development Board | 1 |
+| Fingerprint Sensor | 1 |
+| Laptop / PC | 1 |
+| Webcam | 1 |
+| SIM800L GSM Module | 1 |
+| Green LED | 1 |
+| Red LED | 1 |
+| Blue LED | 1 |
+| Breadboard | 1 |
+| Jumper Wires | As Required |
+| USB Cable | 1 |
 
-✔ Attendance Analytics
+---
 
-✔ Google Sheets Integration
+# Software & Technologies
 
-✔ Parent SMS Notification
+- Python
+- OpenCV
+- Face Recognition Library
+- Tkinter
+- ESP32
+- Arduino IDE
+- Google Sheets API
+- gspread
+- SMTP Email Service
+- CSV
+- NumPy
+- Pandas
 
-✔ Faculty Email Notification
+---
 
-✔ Dashboard
+# Project Architecture
 
-✔ Attendance Percentage
+```
+                   Student
 
-✔ Student Management
+                      │
 
+                      ▼
 
+             Webcam (Face Capture)
 
-Technology Stack
+                      │
 
-Python
+                      ▼
 
-OpenCV
+        Face Recognition (Python + OpenCV)
 
-Face Recognition
+                      │
 
-ESP32
+           Face Verified ?
 
-Tkinter
+                Yes
 
-Google Sheets API
+                      │
 
-SMTP Email
+                      ▼
 
-CSV
+        ESP32 Fingerprint Verification
 
-NumPy
+                      │
 
-Pandas
+       Fingerprint Verified ?
 
+                Yes
 
+                      │
 
-Project Structure
+                      ▼
 
+          Attendance Recorded
+
+                      │
+
+        ┌─────────────┼─────────────┐
+
+        ▼             ▼             ▼
+
+ Google Sheets     SMS Alert     Email Report
+
+        │
+
+        ▼
+
+ Dashboard & Analytics
+```
+
+---
+
+# Project Structure
+
+```
 Smart_Attendance_Project/
-|
-|-- main.py
-|   Main desktop dashboard entry point.
-|
-|-- attendance.py
-|   Live attendance workflow using face recognition and fingerprint verification.
-|
-|-- register.py
-|   Core student registration logic for face capture, fingerprint enrollment, and CSV save.
-|
-|-- register_professional.py
-|   Professional registration window used by the dashboard UI.
-|
-|-- live_detection.py
-|   Lightweight live preview for testing face detection and recognition output.
-|
-|-- train_model.py
-|   Trains the face embedding model from saved dataset images.
-|
-|-- config.py
-|   Shared project configuration and ESP32 discovery cache.
-|
-|-- faculty_notify.py
-|   Sends the attendance report link to faculty by email.
-|
-|-- calculate_percentage.py
-|   Utility script to print attendance percentage from Google Sheets data.
-|
-|-- camera_test.py
-|   Simple Tkinter camera preview test helper.
-|
-|-- credentials.json
-|   Google service account credentials file.
-|
-|-- student_info.csv
-|   Registered student master record.
-|
-|-- ESP32_CODE
-|   ESP32 firmware/source file used on the hardware device.
-|
-|-- structure
-|   Project structure reference file.
-|
-|-- dataset/
-|   Saved face images grouped by student.
-|   `-- <student_name>_<student_id>/
-|       `-- *.jpg
-|
-|-- trainer/
-|   Trained model files and legacy trainer output.
-|   |-- face_embeddings.pkl
-|   `-- trainer.yml
-|
-|-- services/
-|   Core backend service layer.
-|   |-- absence_service.py
-|   |   Finds absent students and sends parent SMS alerts.
-|   |-- camera_service.py
-|   |   Camera read loop, face tracking, and recognition state handling.
-|   |-- esp32_discovery.py
-|   |   Finds the ESP32 device on the local network.
-|   |-- esp32_service.py
-|   |   ESP32 integration for attendance signals, fingerprint actions, and SMS calls.
-|   |-- esp32_sms_service.py
-|   |   Dedicated helper for parent SMS notifications through ESP32.
-|   |-- face_recognition_model.py
-|   |   Face detection, encoding, training, and matching logic.
-|   |-- face_utils.py
-|   |   Shared face crop, resize, normalization, and quality-check helpers.
-|   |-- google_service.py
-|   |   Google Sheets connection, append, and fetch helpers.
-|   `-- thread_service.py
-|       Background thread helper to avoid blocking the UI or attendance loop.
-|
-`-- ui/
-    UI layer for the desktop application.
-    |-- charts_professional.py
-    |   Attendance analytics and charts page.
-    |-- dashboard.py
-    |   Dashboard overview with metrics and quick actions.
-    |-- logs.py
-    |   Attendance log viewer and search page.
-    |-- sidebar.py
-    |   Left navigation sidebar.
-    |-- students.py
-    |   Student directory, profile, edit, and delete flows.
-    `-- theme.py
-        Shared application theme, components, and layout helpers.
+│
+├── main.py
+├── attendance.py
+├── register.py
+├── register_professional.py
+├── live_detection.py
+├── train_model.py
+├── config.py
+├── faculty_notify.py
+├── calculate_percentage.py
+├── camera_test.py
+│
+├── services/
+│   ├── absence_service.py
+│   ├── camera_service.py
+│   ├── esp32_discovery.py
+│   ├── esp32_service.py
+│   ├── esp32_sms_service.py
+│   ├── face_recognition_model.py
+│   ├── face_utils.py
+│   ├── google_service.py
+│   └── thread_service.py
+│
+├── ui/
+│   ├── dashboard.py
+│   ├── students.py
+│   ├── logs.py
+│   ├── charts_professional.py
+│   ├── sidebar.py
+│   └── theme.py
+│
+├── trainer/
+│
+├── dataset/
+│
+├── ESP32_CODE/
+│
+└── README.md
+```
 
-Notes:
-- `__pycache__` folders are generated automatically and are omitted for readability.
-- Dataset image filenames are omitted for readability.
-- The files removed during cleanup are not part of the active project structure anymore.
+---
 
+# Working Flow
 
+### Student Registration
 
+- Enter Student Details
+- Capture Face Images
+- Enroll Fingerprint
+- Save Student Information
 
+### Attendance Process
 
+- Capture Face
+- Verify Face
+- Verify Fingerprint
+- Record Attendance
+- Upload to Google Sheets
+- Send SMS Notification
+- Send Faculty Email
+- Update Dashboard
 
-Hardware Used
+---
 
-ESP32
+# Hardware Setup
 
-Fingerprint Sensor
+The hardware section includes:
 
-Camera Module
+- ESP32 Development Board
+- Fingerprint Sensor
+- SIM800L GSM Module
+- LED Indicators
+- Webcam
+- Breadboard Connections
 
-Laptop
+---
 
-WiFi
+# Modules
 
+## Face Recognition Module
 
+- Face Detection
+- Face Encoding
+- Face Matching
+- Dataset Generation
 
-Software Used
+## Fingerprint Module
 
-Python
+- Fingerprint Enrollment
+- Fingerprint Verification
 
-VS Code
+## ESP32 Module
 
-Arduino IDE
+- Hardware Communication
+- Sensor Control
+- Wi-Fi Communication
 
-Google Sheets
+## IoT Module
 
-GitHub
+- Google Sheets Integration
+- Cloud Attendance Storage
 
+## Notification Module
 
+- Parent SMS
+- Faculty Email
 
-Future Improvements
+## Dashboard Module
 
-Cloud Database
+- Student Records
+- Attendance Logs
+- Charts
+- Attendance Percentage
 
-Mobile App
+---
 
-RFID Support
+# Key Features
 
-QR Attendance
+✔ Dual Biometric Authentication
 
-AI Analytics
+✔ Prevents Proxy Attendance
+
+✔ Cloud-Based Attendance Storage
+
+✔ Real-Time Notifications
+
+✔ Automated Attendance
+
+✔ Desktop GUI
+
+✔ ESP32 Integration
+
+✔ IoT Enabled
+
+✔ Secure Authentication
+
+✔ Easy to Use
+
+---
+
+# Applications
+
+- Schools
+- Colleges
+- Universities
+- Coaching Institutes
+- Offices
+- Organizations
+- Laboratories
+- Training Centers
+
+---
+
+# Advantages
+
+- Eliminates Manual Attendance
+- Prevents Fake Attendance
+- High Accuracy
+- Secure Authentication
+- Cloud Storage
+- Real-Time Monitoring
+- Automatic Notifications
+- Easy Record Management
+
+---
+
+# Future Enhancements
+
+- Mobile Application
+- Firebase Integration
+- Face Anti-Spoofing
+- AI Attendance Analytics
+- Web Dashboard
+- RFID Integration
+- QR Code Attendance
+- Cloud Database
+- Multi-Campus Support
+
+---
+
+# Author
+
+**Mansi Zala**
+
+Bachelor of Technology (Electronics & Communication Engineering)
+
+Passionate about Embedded Systems, IoT, Artificial Intelligence, Computer Vision, and Smart Automation.
+
+---
+
+# License
+
+This project is developed for educational and research purposes.
