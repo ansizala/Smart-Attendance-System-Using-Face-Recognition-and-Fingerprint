@@ -319,6 +319,7 @@ The hardware section includes:
 
 **Mansi Zala**
 
+Diploma in Information and communication technology
 Bachelor of Technology (Electronics & Communication Engineering)
 
 Passionate about Embedded Systems, IoT, Artificial Intelligence, Computer Vision, and Smart Automation.
